@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffc67c;
+            padding: 20px;
+        }
+        .settings-container {
+            max-width: 600px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="settings-container">
+    <h2>User Settings</h2>
+    <!-- ✅ form tag includes all input fields properly -->
+    <form id="settingsForm">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+
+        <label for="language">Language:</label>
+        <select id="language" name="language">
+            <option value="en">English</option>
+            <option value="ta">Tamil</option>
+            <option value="hi">Hindi</option>
+            <option value="si">Sinhala</option>
+        </select>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email">
+
+        <label for="darkmode">Dark Mode:</label>
+        <select id="darkmode" name="darkmode">
+            <option value="on">Enable</option>
+            <option value="off">Disable</option>
+        </select>
+
+        <!-- ✅ Save and Reset buttons side-by-side -->
+    <button type="submit">Save Settings</button>
+    <button type="button" onclick="resetSettings()">Reset</button>
+</form>
+        
+</div>
+
+<script>
+    // Load saved settings from localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedSettings = JSON.parse(localStorage.getItem('userSettings'));
+        if (savedSettings) {
+            document.getElementById('username').value = savedSettings.username || '';
+            document.getElementById('language').value = savedSettings.language || 'en';
+            document.getElementById('email').value = savedSettings.email || '';
+            document.getElementById('darkmode').value = savedSettings.darkmode || 'off';
+        }
+    });
+
+    // Save form data to localStorage on submit
+    document.getElementById('settingsForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        const settings = {
+            username: document.getElementById('username').value,
+            language: document.getElementById('language').value,
+            email: document.getElementById('email').value,
+            darkmode: document.getElementById('darkmode').value
+        };
+
+        localStorage.setItem('userSettings', JSON.stringify(settings));
+        alert('Settings saved successfully!');
+    });
+     // ✅ Reset settings
+    function resetSettings() {
+        localStorage.removeItem('userSettings');
+        document.getElementById('settingsForm').reset();
+        alert("Settings have been reset!");
+    }
+</script>
+
+</body>
+</html>

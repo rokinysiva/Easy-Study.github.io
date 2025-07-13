@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editable Timetable</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: rgb(235, 138, 198);
+      background-image: url('img/download (5).jpg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-attachment: fixed;
+      margin: 0;
+      padding: 0;
+    }
+    table {
+      width: 80%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    th {
+      background-color: #3b7ddd;
+      color: white;
+    }
+    caption {
+      font-size: 24px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    input[type="text"] {
+      width: 95%;
+      padding: 5px;
+      font-size: 14px;
+    }
+    .buttons {
+      margin: 20px 0 40px 0;
+    }
+    .buttons button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background: #3b7ddd;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+    .buttons button:hover {
+      background: #255abf;
+    }
+  </style>
+</head>
+<body>
+
+  <table id="timetable">
+    <caption>Editable Timetable</caption>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Monday</th>
+        <th>Tuesday</th>
+        <th>Wednesday</th>
+        <th>Thursday</th>
+        <th>Friday</th>
+        <th>Saturday</th>
+        <th>Sunday</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows added dynamically -->
+    </tbody>
+  </table>
+
+  <div class="buttons">
+    <button onclick="addRow()">➕ Add Row</button>
+    <button onclick="removeRow()">❌ Remove Last Row</button>
+    <button onclick="saveTableData(true)">💾 Save Table</button>
+    <button onclick="printTable()">🖨️ Print</button>
+    <button onclick="exportPDF()">📄 Export PDF</button>
+  </div>
+
+  <!-- jsPDF & AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    const tableBody = document.querySelector("#timetable tbody");
+
+    // Load saved timetable on page load or add 6 empty rows
+    window.addEventListener("DOMContentLoaded", () => {
+      const saved = localStorage.getItem("timetableData");
+      if (saved) {
+        const data = JSON.parse(saved);
+        data.forEach(rowData => {
+          const row = tableBody.insertRow();
+          rowData.forEach(cellObj => {
+            const cell = row.insertCell();
+            cell.textContent = cellObj.text;
+            cell.style.backgroundColor = cellObj.bg || "";
+          });
+        });
+      } else {
+        for(let i = 0; i < 6; i++) addRow(false);
+      }
+      makeCellsEditable();
+    });
+
+    // Make all cells editable (double click) and toggle background color (right click)
+    function makeCellsEditable() {
+      tableBody.querySelectorAll("td").forEach(cell => {
+        // Prevent adding multiple input boxes
+        cell.ondblclick = function () {
+          if (cell.querySelector("input")) return;
+
+          const original = cell.innerText;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = original;
+          cell.innerText = "";
+          cell.appendChild(input);
+          input.focus();
+
+          // Save on blur
+          input.onblur = () => {
+            cell.innerText = input.value;
+            saveTableData(false);
+          };
+
+          // Save on Enter key press
+          input.onkeydown = (e) => {
+            if (e.key === "Enter") {
+              cell.innerText = input.value;
+              saveTableData(false);
+            }
+          };
+        };
+
+        // Right click to toggle background color
+        cell.oncontextmenu = function (e) {
+          e.preventDefault();
+          if (cell.style.backgroundColor === "lightblue") {
+            cell.style.backgroundColor = "plum";
+          } else if (cell.style.backgroundColor === "plum") {
+            cell.style.backgroundColor = "";
+          } else {
+            cell.style.backgroundColor = "lightblue";
+          }
+          saveTableData(false);
+        };
+      });
+    }
+
+    // Add a new row, optionally save silently (default true)
+    function addRow(save = true) {
+      const row = tableBody.insertRow();
+      for(let i = 0; i < 8; i++) {
+        const cell = row.insertCell();
+        cell.textContent = i === 0 ? "Time" : "";
+      }
+      makeCellsEditable();
+      if (save) saveTableData(false);
+    }
+
+    // Remove last row and save silently
+    function removeRow() {
+      if (tableBody.rows.length > 0) {
+        tableBody.deleteRow(tableBody.rows.length - 1);
+        saveTableData(false);
+      }
+    }
+
+    // Save timetable data to localStorage; alert only if showAlert = true
+    function saveTableData(showAlert = false) {
+      const rows = [];
+      tableBody.querySelectorAll("tr").forEach(row => {
+        const rowData = [];
+        row.querySelectorAll("td").forEach(cell => {
+          rowData.push({
+            text: cell.innerText,
+            bg: cell.style.backgroundColor
+          });
+        });
+        rows.push(rowData);
+      });
+      localStorage.setItem("timetableData", JSON.stringify(rows));
+      if (showAlert) alert("✅ Timetable saved!");
+    }
+
+    // Print timetable in a new window
+    function printTable() {
+      const printWindow = window.open('', '', 'height=600,width=800');
+      printWindow.document.write('<html><head><title>Print Timetable</title></head><body>');
+      printWindow.document.write('<h1>Editable Timetable</h1>');
+      printWindow.document.write(document.querySelector('table').outerHTML);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    // Export timetable as PDF
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const rows = [];
+      tableBody.querySelectorAll("tr").forEach(row => {
+        const rowData = [];
+        row.querySelectorAll("td").forEach(cell => {
+          rowData.push(cell.innerText);
+        });
+        rows.push(rowData);
+      });
+
+      doc.autoTable({
+        head: [['Time', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']],
+        body: rows,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [59, 125, 221] },
+      });
+
+      doc.save('timetable.pdf');
+    }
+  </script>
+
+</body>
+</html>

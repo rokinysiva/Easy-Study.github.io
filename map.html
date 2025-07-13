@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mind Map Generator</title>
+  <style>
+    body { margin:0; font-family: Arial; }
+    #toolbar { background:#2c3e50; color:white; padding:10px; display:flex; gap:10px; align-items:center; }
+    #toolbar button, #toolbar input { padding:6px 10px; font-size:14px; border:none; border-radius:4px; }
+    #toolbar button { background:#2980b9; color:white; cursor:pointer; }
+    #toolbar button:hover { background:#1f618d; }
+    #canvas { width:100vw; height:calc(100vh - 50px); background:#ecf0f1; }
+    .node { cursor: move; user-select: none; }
+    .node rect { fill: white; stroke:#3498db; stroke-width:2; rx:4; }
+    .node.selected rect { stroke:#e74c3c; }
+    .node text { pointer-events: none; font-size:14px; text-anchor:middle; }
+    .edge { stroke:#2c3e50; stroke-width:2; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button onclick="addNode()">➕ Add Node</button>
+    <input id="nodetext" placeholder="Node Text">
+    <button onclick="connectNodes()">🔗 Connect</button>
+    <button onclick="saveMap()">💾 Save</button>
+    <button onclick="loadMap()">🔄 Load</button>
+    <button onclick="clearMap()">🗑 Clear</button>
+    <button onclick="exportPNG()">📷 Export PNG</button>
+    <button onclick="exportPDF()">📄 Export PDF</button>
+  </div>
+  <svg id="canvas"></svg>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+  const svgns = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("canvas");
+  let nodes = [], edges = [], selected = [];
+
+  let viewBox = { x:0, y:0, w: window.innerWidth, h: window.innerHeight - 50 };
+  svg.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  window.addEventListener("resize", () => {
+    viewBox.w = window.innerWidth; viewBox.h = window.innerHeight - 50;
+    svg.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  });
+
+  svg.addEventListener("wheel", e => {
+    e.preventDefault();
+    const zoom = e.deltaY < 0 ? 0.9 : 1.1;
+    viewBox.x += e.offsetX*(1-zoom);
+    viewBox.y += e.offsetY*(1-zoom);
+    viewBox.w *= zoom;
+    viewBox.h *= zoom;
+    svg.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  });
+
+  let isPanning = false, panStart = {};
+  svg.addEventListener("mousedown", e => {
+    if (e.button===1) {
+      isPanning=true;
+      panStart = { x:e.clientX, y:e.clientY, vb:{...viewBox} };
+    }
+  });
+  window.addEventListener("mousemove", e => {
+    if (isPanning) {
+      const dx = (e.clientX - panStart.x)*(panStart.vb.w/viewBox.w);
+      const dy = (e.clientY - panStart.y)*(panStart.vb.h/viewBox.h);
+      viewBox.x = panStart.vb.x - dx;
+      viewBox.y = panStart.vb.y - dy;
+      svg.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+    }
+  });
+  window.addEventListener("mouseup", e => { if(e.button===1) isPanning=false; });
+
+  function addNode(){
+    const text = document.getElementById("nodetext").value.trim() || "Node";
+    const g = document.createElementNS(svgns, "g");
+    g.classList.add("node");
+    g.setAttribute("transform", "translate(50,50)");
+    g.innerHTML = `<rect width="120" height="30"/><text x="60" y="20">${text}</text>`;
+    makeDraggable(g);
+    g.addEventListener("click", e=>{ e.stopPropagation(); toggleSelect(g); });
+    g.addEventListener("dblclick", e=>{ e.stopPropagation(); editNodeText(g); });
+    g.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteNode(g); });
+    svg.appendChild(g);
+    nodes.push(g);
+    redrawEdges();
+  }
+
+  function toggleSelect(g){ if(selected.includes(g)) {
+      g.classList.remove("selected"); selected = selected.filter(n=>n!==g);
+    } else { g.classList.add("selected"); selected.push(g); }
+  }
+
+  function editNodeText(g){
+    const txt = g.querySelector("text");
+    const old = txt.textContent;
+    const inp = prompt("Edit text:", old);
+    if(inp!==null) txt.textContent=inp;
+  }
+
+  function deleteNode(g){
+    edges = edges.filter(e=>e.from!==g && e.to!==g);
+    nodes = nodes.filter(n=>n!==g);
+    if(selected.includes(g)) selected = selected.filter(n=>n!==g);
+    g.remove(); redrawEdges();
+  }
+
+  function connectNodes(){
+    if(selected.length===2){
+      edges.push({ from:selected[0], to:selected[1] });
+      selected.forEach(n=>n.classList.remove("selected"));
+      selected = [];
+      redrawEdges();
+    } else alert("Select exactly two nodes.");
+  }
+
+  function makeDraggable(el){
+    let dx=0, dy=0, start={};
+    el.addEventListener("mousedown", e=>{
+      if(e.button!==0) return;
+      e.stopPropagation();
+      start = { x:e.clientX, y:e.clientY, tx: parseFloat(el.getAttribute("transform").split(/[(),]/)[1]), 
+                ty: parseFloat(el.getAttribute("transform").split(/[(),]/)[2]) };
+      dx=dy=0;
+      const move = e2=>{
+        dx = (e2.clientX - start.x)*(viewBox.w/window.innerWidth);
+        dy = (e2.clientY - start.y)*(viewBox.h/(window.innerHeight-50));
+        el.setAttribute("transform", `translate(${start.tx+dx},${start.ty+dy})`);
+        redrawEdges();
+      };
+      const up = ()=>{ window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+      window.addEventListener("mousemove", move);
+      window.addEventListener("mouseup", up);
+    });
+  }
+
+  function redrawEdges(){
+    svg.querySelectorAll("line").forEach(n=>n.remove());
+    edges.forEach(e=>{
+      const p1 = e.from.getCTM(), p2 = e.to.getCTM();
+      const x1 = p1.e + 60, y1 = p1.f + 15, x2 = p2.e + 60, y2 = p2.f + 15;
+      const line = document.createElementNS(svgns, "line");
+      line.setAttribute("x1",x1); line.setAttribute("y1",y1);
+      line.setAttribute("x2",x2); line.setAttribute("y2",y2);
+      line.classList.add("edge"); svg.appendChild(line);
+    });
+  }
+
+  function saveMap(){
+    const data = {
+      nodes: nodes.map(n=>{const c=n.querySelector("text");const t=n.getAttribute("transform");
+        const [x,y] = t.match(/translate\((.+),(.+)\)/).slice(1);
+        return { text:c.textContent, x:parseFloat(x), y:parseFloat(y) };
+      }),
+      edges: edges.map(e=>({ from: nodes.indexOf(e.from), to: nodes.indexOf(e.to) }))
+    };
+    localStorage.setItem("mindmap", JSON.stringify(data));
+    alert("Saved!");
+  }
+
+  function loadMap(){
+    clearMap();
+    const data = JSON.parse(localStorage.getItem("mindmap")||"{}");
+    if(!data.nodes) return;
+    data.nodes.forEach(nd => {
+      document.getElementById("nodetext").value = nd.text;
+      addNode();
+      const last = nodes[nodes.length-1];
+      last.setAttribute("transform", `translate(${nd.x},${nd.y})`);
+    });
+    edges = (data.edges||[]).map(e=>({ from: nodes[e.from], to: nodes[e.to] }));
+    redrawEdges();
+  }
+
+  function clearMap(){
+    nodes = []; edges=[]; selected=[];
+    svg.innerHTML="";
+  }
+
+  function exportPNG(){
+    const serializer = new XMLSerializer();
+    const svgBlob = new Blob([serializer.serializeToString(svg)], {type:"image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      const png = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.download = "mindmap.png"; a.href = png;
+      a.click();
+    };
+    img.src = url;
+  }
+
+  async function exportPDF(){
+    const { jsPDF } = window.jspdf;
+    exportPNG(); // get image once
+    const canvas = document.createElement("canvas");
+    const width = viewBox.w, height = viewBox.h;
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    const serializer = (new XMLSerializer()).serializeToString(svg);
+    const img = new Image();
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(serializer)));
+    await new Promise(r=>img.onload=r);
+    ctx.drawImage(img,0,0);
+    const doc = new jsPDF({ unit:"pt", format:[width, height] });
+    doc.addImage(canvas, 'PNG', 0, 0, width, height);
+    doc.save("mindmap.pdf");
+  }
+
+  svg.addEventListener("click", ()=>{ selected.forEach(n=>n.classList.remove("selected")); selected = []; });
+  loadMap();
+  </script>
+</body>
+</html>

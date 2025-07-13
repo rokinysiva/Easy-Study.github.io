@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Study Schedule Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f5f6fa;
+      color: #2f3640;
+    }
+    h1, h2, h3 {
+      color: #273c75;
+    }
+    input, button {
+      margin: 5px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      background-color: #40739e;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #dcdde1;
+    }
+    .section {
+      margin-top: 30px;
+    }
+    .subject-list li {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 Smart Study Schedule Generator</h1>
+
+  <div class="section">
+    <h3>➕ Add Subject</h3>
+    <input id="subjName" placeholder="Subject Name">
+    <input id="subjHours" type="number" placeholder="Total Hours">
+    <input id="subjPriority" type="number" placeholder="Priority (1-5)">
+    <input id="subjDeadline" type="date">
+    <button onclick="addSubject()">Add</button>
+  </div>
+
+  <div class="section">
+    <h3>📋 Subjects Added</h3>
+    <ul id="subjectList" class="subject-list"></ul>
+  </div>
+
+  <div class="section">
+    <h3>🕒 Set Daily Available Hours</h3>
+    <div id="dailyHoursInputs"></div>
+  </div>
+
+  <div class="section">
+    <button onclick="generateSchedule()">📅 Generate Schedule</button>
+  </div>
+
+  <div class="section">
+    <h2>📆 Study Schedule</h2>
+    <div id="scheduleOutput"></div>
+  </div>
+
+  <script>
+    let subjects = [];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    // Render daily hours inputs
+    const dailyHoursInputs = document.getElementById('dailyHoursInputs');
+    days.forEach(day => {
+      dailyHoursInputs.innerHTML += `${day}: <input id="${day}" type="number" value="3" min="0"><br>`;
+    });
+
+    // Save & Load from localStorage
+    function saveData() {
+      localStorage.setItem("studySubjects", JSON.stringify(subjects));
+      const dailyHours = {};
+      days.forEach(day => {
+        dailyHours[day] = parseFloat(document.getElementById(day).value) || 0;
+      });
+      localStorage.setItem("studyHours", JSON.stringify(dailyHours));
+    }
+
+    function loadData() {
+      const storedSubjects = JSON.parse(localStorage.getItem("studySubjects") || "[]");
+      const storedHours = JSON.parse(localStorage.getItem("studyHours") || "{}");
+
+      subjects = storedSubjects.map(s => ({ ...s, deadline: new Date(s.deadline) }));
+      updateSubjectList();
+
+      days.forEach(day => {
+        if (storedHours[day] !== undefined) {
+          document.getElementById(day).value = storedHours[day];
+        }
+      });
+    }
+
+    function addSubject() {
+      const name = document.getElementById('subjName').value.trim();
+      const hours = parseFloat(document.getElementById('subjHours').value);
+      const priority = parseInt(document.getElementById('subjPriority').value);
+      const deadline = new Date(document.getElementById('subjDeadline').value);
+
+      if (!name || isNaN(hours) || isNaN(priority) || isNaN(deadline.getTime())) {
+        alert("⚠️ Please fill all subject fields correctly.");
+        return;
+      }
+
+      subjects.push({ name, totalHours: hours, priority, deadline });
+      updateSubjectList();
+      clearSubjectInputs();
+      saveData();
+    }
+
+    function clearSubjectInputs() {
+      document.getElementById('subjName').value = '';
+      document.getElementById('subjHours').value = '';
+      document.getElementById('subjPriority').value = '';
+      document.getElementById('subjDeadline').value = '';
+    }
+
+    function deleteSubject(index) {
+      subjects.splice(index, 1);
+      updateSubjectList();
+      saveData();
+    }
+
+    function updateSubjectList() {
+      const list = document.getElementById("subjectList");
+      list.innerHTML = "";
+      subjects.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          ${s.name} - ${s.totalHours} hrs, Priority ${s.priority}, Deadline ${new Date(s.deadline).toDateString()}
+          <button onclick="deleteSubject(${i})">Delete</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    function generateSchedule() {
+      const today = new Date();
+      const endDate = new Date(Math.max(...subjects.map(s => new Date(s.deadline))));
+
+      const dailyHours = {};
+      days.forEach(day => {
+        const val = parseFloat(document.getElementById(day).value) || 0;
+        dailyHours[day] = val;
+      });
+
+      saveData(); // Save latest daily hours
+
+      const subjectCopy = subjects.map(s => ({
+        ...s,
+        deadline: new Date(s.deadline),
+        totalHours: parseFloat(s.totalHours)
+      }));
+
+      subjectCopy.forEach(s => {
+        const daysLeft = Math.max(Math.ceil((s.deadline - today) / (1000 * 60 * 60 * 24)), 1);
+        s.daysLeft = daysLeft;
+        s.urgency = s.priority / daysLeft;
+      });
+
+      const totalUrgency = subjectCopy.reduce((sum, s) => sum + s.urgency, 0);
+      const schedule = {};
+
+      for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = days[d.getDay() === 0 ? 6 : d.getDay() - 1];
+        const available = dailyHours[dayName];
+        if (available <= 0) continue;
+
+        schedule[dateStr] = [];
+
+        subjectCopy.forEach(s => {
+          if (s.totalHours <= 0 || d > s.deadline) return;
+
+          const share = (s.urgency / totalUrgency) * available;
+          const assign = Math.min(share, s.totalHours);
+          if (assign > 0) {
+            s.totalHours -= assign;
+            schedule[dateStr].push({ subject: s.name, hours: parseFloat(assign.toFixed(2)) });
+          }
+        });
+      }
+
+      displaySchedule(schedule);
+    }
+
+    function displaySchedule(schedule) {
+      const output = document.getElementById("scheduleOutput");
+      output.innerHTML = "";
+
+      Object.keys(schedule).sort().forEach(date => {
+        const div = document.createElement("div");
+        div.innerHTML = `<h3>${new Date(date).toDateString()}</h3>`;
+        const table = document.createElement("table");
+        table.innerHTML = "<tr><th>Subject</th><th>Hours</th></tr>";
+        schedule[date].forEach(item => {
+          table.innerHTML += `<tr><td>${item.subject}</td><td>${item.hours}</td></tr>`;
+        });
+        div.appendChild(table);
+        output.appendChild(div);
+      });
+    }
+
+    // Initialize
+    loadData();
+  </script>
+
+</body>
+</html>

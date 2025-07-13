@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Note App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #cf9aff, #95c0ff);
+      color: #fff;
+      padding: 4% 10%;
+    }
+
+    .container h1 {
+      display: flex;
+      align-items: center;
+      font-size: 35px;
+      font-weight: 600;
+    }
+
+    .container h1 img {
+      width: 60px;
+      margin-left: 10px;
+    }
+
+    .button-group {
+      margin-top: 20px;
+    }
+
+    .container button {
+      display: inline-flex;
+      align-items: center;
+      background: linear-gradient(#571870, #571094);
+      color: #fff;
+      font-size: 16px;
+      outline: 0;
+      border: 0;
+      border-radius: 40px;
+      padding: 15px 25px;
+      margin: 10px 10px 10px 0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .container button:hover {
+      opacity: 0.9;
+    }
+
+    .container button img {
+      width: 25px;
+      margin-right: 8px;
+    }
+
+    .notes-section {
+      margin-top: 30px;
+    }
+
+    .input-box {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      min-height: 150px;
+      background: #fff;
+      color: #333;
+      padding: 20px;
+      margin: 20px 0;
+      outline: none;
+      border-radius: 5px;
+    }
+
+    .input-box img {
+      width: 25px;
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>My Notes 
+      <img src="https://cdn-icons-png.flaticon.com/512/1828/1828911.png" alt="note icon">
+    </h1>
+
+    <div class="button-group">
+      <button id="addNoteBtn">
+        <img src="https://cdn-icons-png.flaticon.com/512/1828/1828817.png" alt="plus icon">
+        Add Note
+      </button>
+      <button onclick="saveNotes(true)">💾 Save Notes</button>
+      <button onclick="printTable()">🖨️ Print</button>
+      <button onclick="exportPDF()">📄 Export PDF</button>
+    </div>
+
+    <div class="notes-section"></div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const addNoteBtn = document.getElementById('addNoteBtn');
+    const notesSection = document.querySelector('.notes-section');
+
+    // Add a new note
+    function addNote(text = "Write your note here...") {
+      const newNote = document.createElement('div');
+      newNote.classList.add('input-box');
+      newNote.setAttribute('contenteditable', 'true');
+      newNote.innerHTML = `${text}<img src="https://cdn-icons-png.flaticon.com/512/1828/1828843.png" alt="delete icon" title="Delete Note">`;
+
+      notesSection.appendChild(newNote);
+
+      // Delete icon functionality
+      const deleteIcon = newNote.querySelector('img');
+      deleteIcon.addEventListener('click', () => {
+        newNote.remove();
+        saveNotes(false); // Silent save on delete
+      });
+
+      // Auto-save silently on typing
+      newNote.addEventListener('input', () => saveNotes(false));
+    }
+
+    // Save notes function with optional alert
+    function saveNotes(showAlert = false) {
+      const notes = Array.from(document.querySelectorAll('.input-box')).map(note => {
+        const clone = note.cloneNode(true);
+        const img = clone.querySelector('img');
+        if (img) img.remove();
+        return clone.innerText.trim();
+      });
+
+      localStorage.setItem('myNotes', JSON.stringify(notes));
+      if (showAlert) {
+        alert("✅ Notes saved!");
+      }
+    }
+
+    // Load saved notes from localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedNotes = JSON.parse(localStorage.getItem('myNotes')) || [];
+      if (savedNotes.length === 0) {
+        addNote(); // Create one note if empty
+      } else {
+        savedNotes.forEach(note => addNote(note));
+      }
+    });
+
+    // Add note button
+    addNoteBtn.addEventListener('click', () => {
+      addNote();
+    });
+
+    // Print notes
+    function printTable() {
+      const printWindow = window.open('', '', 'height=600,width=800');
+      printWindow.document.write('<html><head><title>Print Notes</title></head><body>');
+      printWindow.document.write('<h1>My Notes</h1>');
+      document.querySelectorAll('.input-box').forEach(note => {
+        const clone = note.cloneNode(true);
+        const img = clone.querySelector('img');
+        if (img) img.remove();
+        printWindow.document.write(`<div>${clone.innerText}</div><hr>`);
+      });
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    // Export to PDF
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const notes = Array.from(document.querySelectorAll('.input-box')).map(note => {
+        const clone = note.cloneNode(true);
+        const img = clone.querySelector('img');
+        if (img) img.remove();
+        return clone.innerText.trim();
+      });
+
+      let y = 10;
+      for (let i = 0; i < notes.length; i++) {
+        doc.text(`Note ${i + 1}:`, 10, y);
+        y += 7;
+        const lines = doc.splitTextToSize(notes[i], 180);
+        doc.text(lines, 10, y);
+        y += lines.length * 7 + 5;
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+      }
+
+      doc.save('My_Notes.pdf');
+    }
+
+    // Ctrl+S shortcut to save notes
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveNotes(true);
+      }
+    });
+  </script>
+
+  <!-- jsPDF Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>

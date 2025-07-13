@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/jpeg" href="img/flag.jpg">
+  <title>Guess the Flag - Level 5 Version</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: rgb(82, 177, 233);
+      padding: 20px;
+    }
+    #flag {
+      width: 250px;
+      height: 150px;
+      margin: 20px auto;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #333;
+    }
+    .btn {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover:not(:disabled) {
+      background-color: #388e3c;
+    }
+    #score, #level, #timer, #result, #highScore, #lives {
+      font-size: 20px;
+      margin: 10px;
+    }
+    #gameOver {
+      display: none;
+      font-size: 24px;
+      color: red;
+      margin-top: 20px;
+    }
+    #playAgainBtn {
+      margin-top: 15px;
+      padding: 10px 25px;
+      font-size: 18px;
+      background-color: #ff5722;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #playAgainBtn:hover {
+      background-color: #e64a19;
+    }
+    #stopBtn {
+      background-color: #f44336;
+      margin-top: 10px;
+      width: 100px;
+      font-weight: bold;
+    }
+    #stopBtn:hover {
+      background-color: #d32f2f;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌍 Guess the Flag</h1>
+  <div id="score">Score: 0</div>
+  <div id="highScore">🏆 High Score: 0</div>
+  <div id="level">Level: 1</div>
+  <div id="lives">❤️ Lives: 3</div>
+  <div id="timer">⏱️ Time: 10</div>
+  <div id="flag"></div>
+  <div id="buttons"></div>
+
+  <button id="stopBtn" class="btn">⏸️ Stop</button>
+
+  <div id="result"></div>
+  <div id="gameOver">
+    💀 Game Over!<br>
+    <button id="playAgainBtn">🔁 Play Again</button>
+  </div>
+
+  <!-- Sound Effects -->
+  <audio id="correctSound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
+  <audio id="wrongSound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
+
+  <script>
+    const allFlags = [
+      // Level 1
+      { level: 1, country: "Japan", flag: "https://upload.wikimedia.org/wikipedia/en/9/9e/Flag_of_Japan.svg", options: ["Japan", "China", "South Korea"] },
+      { level: 1, country: "France", flag: "https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg", options: ["France", "Italy", "Netherlands"] },
+      { level: 1, country: "Brazil", flag: "https://upload.wikimedia.org/wikipedia/en/0/05/Flag_of_Brazil.svg", options: ["Brazil", "Mexico", "Argentina"] },
+      { level: 1, country: "India", flag: "https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg", options: ["India", "Pakistan", "Bangladesh"] },
+      { level: 1, country: "Canada", flag: "https://upload.wikimedia.org/wikipedia/commons/c/cf/Flag_of_Canada.png", options: ["Canada", "USA", "UK"] },
+
+      // Level 2
+      { level: 2, country: "Germany", flag: "https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg", options: ["Germany", "Belgium", "Austria"] },
+      { level: 2, country: "Russia", flag: "https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg", options: ["Russia", "Slovakia", "Serbia"] },
+      { level: 2, country: "Italy", flag: "https://upload.wikimedia.org/wikipedia/en/0/03/Flag_of_Italy.svg", options: ["Italy", "Ireland", "Mexico"] },
+      { level: 2, country: "Australia", flag: "https://upload.wikimedia.org/wikipedia/en/b/b9/Flag_of_Australia.svg", options: ["Australia", "New Zealand", "UK"] },
+      { level: 2, country: "South Korea", flag: "https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg", options: ["South Korea", "North Korea", "Japan"] },
+
+      // Level 3
+      { level: 3, country: "United Kingdom", flag: "https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg", options: ["United Kingdom", "Australia", "New Zealand"] },
+      { level: 3, country: "Mexico", flag: "https://upload.wikimedia.org/wikipedia/commons/f/fc/Flag_of_Mexico.svg", options: ["Mexico", "Italy", "Portugal"] },
+      { level: 3, country: "Spain", flag: "https://upload.wikimedia.org/wikipedia/en/9/9a/Flag_of_Spain.svg", options: ["Spain", "Portugal", "France"] },
+      { level: 3, country: "South Africa", flag: "https://upload.wikimedia.org/wikipedia/commons/a/af/Flag_of_South_Africa.svg", options: ["South Africa", "Kenya", "Nigeria"] },
+      { level: 3, country: "Argentina", flag: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg", options: ["Argentina", "Uruguay", "Paraguay"] },
+
+      // Level 4
+      { level: 4, country: "Egypt", flag: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Flag_of_Egypt.svg", options: ["Egypt", "Sudan", "Libya"] },
+      { level: 4, country: "Turkey", flag: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg", options: ["Turkey", "Azerbaijan", "Tunisia"] },
+      { level: 4, country: "Norway", flag: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Flag_of_Norway.svg", options: ["Norway", "Sweden", "Finland"] },
+      { level: 4, country: "Thailand", flag: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Flag_of_Thailand.svg", options: ["Thailand", "Malaysia", "Indonesia"] },
+      { level: 4, country: "Colombia", flag: "https://upload.wikimedia.org/wikipedia/commons/2/21/Flag_of_Colombia.svg", options: ["Colombia", "Venezuela", "Ecuador"] },
+
+      // Level 5
+      { level: 5, country: "Saudi Arabia", flag: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Flag_of_Saudi_Arabia.svg", options: ["Saudi Arabia", "Iran", "Iraq"] },
+      { level: 5, country: "Switzerland", flag: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Switzerland.svg", options: ["Switzerland", "Austria", "Liechtenstein"] },
+      { level: 5, country: "Greece", flag: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Greece.svg", options: ["Greece", "Finland", "Croatia"] },
+      { level: 5, country: "Chile", flag: "https://upload.wikimedia.org/wikipedia/commons/7/78/Flag_of_Chile.svg", options: ["Chile", "Cuba", "Panama"] },
+      { level: 5, country: "Portugal", flag: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Portugal.svg", options: ["Portugal", "Spain", "Italy"] }
+    ];
+
+    let score = 0;
+    let level = 1;
+    let correctAnswers = 0;
+    let lives = 3;
+    let currentFlag;
+    let timer;
+    let timeLeft = 10;
+    let isPaused = false;
+
+    const flagDiv = document.getElementById("flag");
+    const buttonsDiv = document.getElementById("buttons");
+    const resultDiv = document.getElementById("result");
+    const scoreDiv = document.getElementById("score");
+    const levelDiv = document.getElementById("level");
+    const timerDiv = document.getElementById("timer");
+    const livesDiv = document.getElementById("lives");
+    const gameOverDiv = document.getElementById("gameOver");
+    const playAgainBtn = document.getElementById("playAgainBtn");
+    const highScoreDiv = document.getElementById("highScore");
+    const stopBtn = document.getElementById("stopBtn");
+
+    const correctSound = document.getElementById("correctSound");
+    const wrongSound = document.getElementById("wrongSound");
+
+    let savedHighScore = localStorage.getItem("flagHighScore") || 0;
+    highScoreDiv.textContent = `🏆 High Score: ${savedHighScore}`;
+
+    playAgainBtn.onclick = restartGame;
+
+    stopBtn.onclick = () => {
+      if (!isPaused) {
+        pauseGame();
+      } else {
+        resumeGame();
+      }
+    };
+
+    function pauseGame() {
+      clearInterval(timer);
+      disableButtons(true);
+      stopBtn.textContent = "▶️ Resume";
+      stopBtn.style.backgroundColor = "#4caf50";
+      isPaused = true;
+      resultDiv.textContent = "⏸️ Game Paused";
+    }
+
+    function resumeGame() {
+      startTimer();
+      disableButtons(false);
+      stopBtn.textContent = "⏸️ Stop";
+      stopBtn.style.backgroundColor = "#f44336";
+      isPaused = false;
+      resultDiv.textContent = "";
+    }
+
+    function disableButtons(disabled) {
+      const btns = buttonsDiv.querySelectorAll("button");
+      btns.forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function getFlagsForLevel(currentLevel) {
+      // If level higher than max level, cap it
+      const maxLevel = 5;
+      if (currentLevel > maxLevel) return getFlagsForLevel(maxLevel);
+      return allFlags.filter(flag => flag.level === currentLevel);
+    }
+
+    function startTimer() {
+      timeLeft = 10;
+      timerDiv.textContent = `⏱️ Time: ${timeLeft}`;
+      timer = setInterval(() => {
+        if (!isPaused) {
+          timeLeft--;
+          timerDiv.textContent = `⏱️ Time: ${timeLeft}`;
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            handleWrong(`⏰ Time's up! It was ${currentFlag.country}`);
+          }
+        }
+      }, 1000);
+    }
+
+    function updateHighScore() {
+      if (score > savedHighScore) {
+        savedHighScore = score;
+        localStorage.setItem("flagHighScore", score);
+        highScoreDiv.textContent = `🏆 High Score: ${score}`;
+      }
+    }
+
+    function handleWrong(message) {
+      wrongSound.play();
+      lives--;
+      livesDiv.textContent = `❤️ Lives: ${lives}`;
+      resultDiv.textContent = `❌ ${message}`;
+      if (lives <= 0) {
+        updateHighScore();
+        gameOverDiv.style.display = "block";
+        buttonsDiv.innerHTML = "";
+        clearInterval(timer);
+        stopBtn.disabled = true;
+      } else {
+        setTimeout(showFlag, 1500);
+      }
+    }
+
+    function showFlag() {
+      clearInterval(timer);
+      resultDiv.textContent = "";
+      buttonsDiv.innerHTML = "";
+      stopBtn.disabled = false;
+
+      const levelFlags = getFlagsForLevel(level);
+      currentFlag = levelFlags[Math.floor(Math.random() * levelFlags.length)];
+      flagDiv.style.backgroundImage = `url(${currentFlag.flag})`;
+
+      shuffle(currentFlag.options).forEach(option => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = option;
+        btn.onclick = () => {
+          if (isPaused) return; // Ignore clicks while paused
+          clearInterval(timer);
+          if (option === currentFlag.country) {
+            correctSound.play();
+            score += 10;
+            correctAnswers++;
+            resultDiv.textContent = "✅ Correct!";
+            if (correctAnswers % 5 === 0) {
+              level++;
+              alert("🎉 Level Up! Welcome to Level " + level);
+              levelDiv.textContent = "Level: " + level;
+            }
+            scoreDiv.textContent = `Score: ${score}`;
+            updateHighScore();
+            setTimeout(showFlag, 1500);
+          } else {
+            handleWrong(`Wrong! It was ${currentFlag.country}`);
+          }
+        };
+        buttonsDiv.appendChild(btn);
+      });
+
+      if (!isPaused) startTimer();
+    }
+
+    function restartGame() {
+      score = 0;
+      level = 1;
+      correctAnswers = 0;
+      lives = 3;
+      isPaused = false;
+      scoreDiv.textContent = "Score: 0";
+      levelDiv.textContent = "Level: 1";
+      livesDiv.textContent = "❤️ Lives: 3";
+      resultDiv.textContent = "";
+      gameOverDiv.style.display = "none";
+      stopBtn.disabled = false;
+      stopBtn.textContent = "⏸️ Stop";
+      stopBtn.style.backgroundColor = "#f44336";
+      showFlag();
+    }
+
+    showFlag();
+
+  </script>
+
+</body>
+</html>

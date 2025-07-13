@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Easy Study - Flashcards</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f4ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .flashcard {
+      width: 300px;
+      height: 200px;
+      margin: 20px auto;
+      perspective: 1000px;
+      cursor: pointer;
+      position: relative;
+    }
+    .front, .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      background: #fff;
+      border: 2px solid #007bff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    }
+    .back {
+      transform: rotateY(180deg);
+    }
+    .flashcard.flipped .front {
+      transform: rotateY(180deg);
+    }
+    .flashcard.flipped .back {
+      transform: rotateY(360deg);
+    }
+    .form-section {
+      margin-top: 20px;
+    }
+    input, select {
+      margin: 5px;
+      padding: 8px;
+      width: 90%;
+      max-width: 400px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .lang-toggle button {
+      background-color: #ddd;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    .lang-toggle button:hover {
+      background-color: #bbb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📚 Easy Study - Flashcards</h1>
+
+    <div class="lang-toggle">
+      <button onclick="setLang('ta')">தமிழ்</button>
+      <button onclick="setLang('en')">English</button>
+    </div>
+
+    <select id="subjectSelect"></select>
+
+    <div id="flashcard" class="flashcard">
+      <div id="question" class="front"></div>
+      <div id="answer" class="back"></div>
+    </div>
+
+    <button onclick="nextFlashcard()">Next ➡️</button>
+
+    <div class="form-section">
+      <h3>➕ Add Your Own Flashcard</h3>
+      <input type="text" id="newSubject" placeholder="Subject" />
+      <input type="text" id="newQuestion" placeholder="Question" />
+      <input type="text" id="newAnswer" placeholder="Answer" />
+      <button onclick="addFlashcard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    let lang = 'en';
+    let flashcards = JSON.parse(localStorage.getItem('flashcards')) || {
+      physics: [
+        { q: "What is Newton's First Law?", a: "An object in motion stays in motion unless acted upon." },
+        { q: "Unit of Force?", a: "Newton (N)" }
+      ],
+      biology: [
+        { q: "What is the powerhouse of the cell?", a: "Mitochondria" }
+      ]
+    };
+
+    let currentIndex = 0;
+    let currentSubject = "physics";
+
+    const subjectSelect = document.getElementById("subjectSelect");
+    const flashcard = document.getElementById("flashcard");
+    const questionDiv = document.getElementById("question");
+    const answerDiv = document.getElementById("answer");
+
+    function updateSubjects() {
+      subjectSelect.innerHTML = '';
+      Object.keys(flashcards).forEach(subject => {
+        let opt = document.createElement("option");
+        opt.value = subject;
+        opt.textContent = subject.charAt(0).toUpperCase() + subject.slice(1);
+        subjectSelect.appendChild(opt);
+      });
+      subjectSelect.value = currentSubject;
+      loadFlashcard();
+    }
+
+    subjectSelect.addEventListener("change", () => {
+      currentSubject = subjectSelect.value;
+      currentIndex = 0;
+      loadFlashcard();
+    });
+
+    flashcard.addEventListener("click", () => {
+      flashcard.classList.toggle("flipped");
+    });
+
+    function loadFlashcard() {
+      const cardList = flashcards[currentSubject];
+      if (cardList && cardList.length > 0) {
+        const card = cardList[currentIndex];
+        questionDiv.textContent = card.q;
+        answerDiv.textContent = card.a;
+      } else {
+        questionDiv.textContent = "No flashcards available";
+        answerDiv.textContent = "";
+      }
+      flashcard.classList.remove("flipped");
+    }
+
+    function nextFlashcard() {
+      const list = flashcards[currentSubject];
+      if (list && list.length > 0) {
+        currentIndex = (currentIndex + 1) % list.length;
+        loadFlashcard();
+      }
+    }
+
+    function addFlashcard() {
+      const newSubject = document.getElementById("newSubject").value.trim().toLowerCase();
+      const newQuestion = document.getElementById("newQuestion").value.trim();
+      const newAnswer = document.getElementById("newAnswer").value.trim();
+
+      if (newSubject && newQuestion && newAnswer) {
+        if (!flashcards[newSubject]) flashcards[newSubject] = [];
+        flashcards[newSubject].push({ q: newQuestion, a: newAnswer });
+
+        localStorage.setItem('flashcards', JSON.stringify(flashcards));
+
+        document.getElementById("newSubject").value = '';
+        document.getElementById("newQuestion").value = '';
+        document.getElementById("newAnswer").value = '';
+
+        currentSubject = newSubject;
+        updateSubjects();
+      } else {
+        alert("Please fill all fields!");
+      }
+    }
+
+    function setLang(l) {
+      lang = l;
+      alert("Language switched to: " + (lang === 'ta' ? 'தமிழ்' : 'English'));
+      // You can extend this to switch flashcard language content if stored separately
+    }
+
+    updateSubjects();
+  </script>
+</body>
+</html>

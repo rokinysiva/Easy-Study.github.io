@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/jpeg" href="img/quiz.jpg">
+  <title>Quiz Game | Easy Study And Work</title>
+  <style>
+    body {
+      background-color: rgb(82, 177, 233);
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .btn {
+      padding: 12px 25px;
+      margin: 10px;
+      font-size: 18px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background-color: #0056b3;
+    }
+
+    .question {
+      margin-top: 30px;
+      font-size: 20px;
+    }
+
+    .choices button {
+      display: block;
+      margin: 10px auto;
+      width: 60%;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧠 Quiz Game - Easy Study And Work</h1>
+
+  <div id="subject-selection">
+    <h2>Select a Subject:</h2>
+    <button class="btn" onclick="startQuiz('science')">📘 Science</button>
+    <button class="btn" onclick="startQuiz('history')">🏛️ History</button>
+    <button class="btn" onclick="startQuiz('gk')">🌍 General Knowledge</button>
+    <button class="btn" onclick="startQuiz('math')">🔢 Math</button>
+  </div>
+
+  <div id="quiz-container" style="display: none;">
+    <div class="question" id="question">Question text</div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <script>
+    const questions = {
+      science: [
+        {
+          question: "What is the boiling point of water?",
+          choices: ["90°C", "100°C", "110°C"],
+          answer: "100°C"
+        },
+        {
+          question: "Which part of the plant conducts photosynthesis?",
+          choices: ["Root", "Stem", "Leaf"],
+          answer: "Leaf"
+        },
+        {
+         question: "Which gas is essential for photosynthesis?",
+         choices: ["Oxygen", "Carbon dioxide", "Nitrogen"],
+         answer: "Carbon dioxide"
+        },
+        {
+         question: "What is the chemical symbol of water?",
+         choices: ["H2O", "O2", "CO2"],
+         answer: "H2O"
+        },
+        {
+         question: "Which organ pumps blood?",
+         choices: ["Lungs", "Heart", "Liver"],
+         answer: "Heart"
+        }
+      ],
+      history: [
+        {
+          question: "Who was the first President of India?",
+          choices: ["Dr. Rajendra Prasad", "Jawaharlal Nehru", "Mahatma Gandhi"],
+          answer: "Dr. Rajendra Prasad"
+        },
+        {
+          question: "In which year did India gain independence?",
+          choices: ["1945", "1947", "1950"],
+          answer: "1947"
+        }
+      ],
+      gk: [
+        {
+          question: "Which is the largest continent in the world?",
+          choices: ["Asia", "Africa", "Europe"],
+          answer: "Asia"
+        },
+        {
+          question: "What is the national bird of India?",
+          choices: ["Sparrow", "Peacock", "Eagle"],
+          answer: "Peacock"
+        }
+      ],
+      math: [
+        {
+          question: "What is 8 × 7?",
+          choices: ["54", "56", "64"],
+          answer: "56"
+        },
+        {
+          question: "What is the square root of 49?",
+          choices: ["6", "7", "8"],
+          answer: "7"
+        }
+      ]
+    };
+
+    let current = 0;
+    let currentSet = [];
+
+    function startQuiz(subject) {
+      currentSet = questions[subject];
+      current = 0;
+
+      document.getElementById('subject-selection').style.display = 'none';
+      document.getElementById('quiz-container').style.display = 'block';
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      if (current >= currentSet.length) {
+        document.getElementById('quiz-container').innerHTML = `<h2>🎉 You completed the quiz!</h2><button class="btn" onclick="location.reload()">Play Again</button>`;
+        return;
+      }
+
+      const q = currentSet[current];
+      document.getElementById('question').textContent = q.question;
+      const choicesDiv = document.getElementById('choices');
+      choicesDiv.innerHTML = "";
+
+      q.choices.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = choice;
+        btn.onclick = () => checkAnswer(choice);
+        choicesDiv.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected) {
+      const correct = currentSet[current].answer;
+      alert(selected === correct ? "✅ Correct!" : `❌ Wrong! Correct answer: ${correct}`);
+      current++;
+      loadQuestion();
+    }
+  </script>
+
+</body>
+</html>
